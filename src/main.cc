@@ -1,56 +1,36 @@
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <iostream>
 #include <ostream>
 #include <ranges>
-#include <utility>
+
 #include "color.hpp"
+#include "globals.hpp"
 #include "ray.hpp"
 #include "utiltools.hpp"
 #include "vec3.hpp"
-
-template <class Image_t, class Ratio>
-constexpr auto get_height(const Image_t& width, const Ratio& ratio)
-    -> std::size_t {
-  auto h = static_cast<Ratio>(width) / ratio;
-  if (h < 1.0)
-    h = 1.0;
-  return static_cast<Image_t>(h);
-}
-
-template <class Viewport_t, class Image_t>
-constexpr auto get_viewport_width(const Viewport_t& height,
-                                  const Image_t& img_width,
-                                  const Image_t& img_height) -> Viewport_t {
-  return height * static_cast<Viewport_t>(img_width) /
-         static_cast<Viewport_t>(img_height);
-}
+#include "viewport.hpp"
 
 template <class T>
-auto calculate_pixel_delta(T&& range) {
-  return [range = std::forward<T>(range)](auto p) {
-    return p / static_cast<std::remove_cvref_t<decltype(p)>::type>(range);
-  };
+auto hit_sphere(const Point3<T>& center, const T& radius, const Ray<T> ray)
+    -> T {
+  const auto oc = center - ray.origin();
+  const auto a = dot(ray.direction(), ray.direction());
+  const auto h = dot(ray.direction(), oc);
+  const auto c = dot(oc, oc) - radius * radius;
+  const auto disciminant = h * h - a * c;
+  return (disciminant < 0) ? -1. : (h - std::sqrt(disciminant)) / a;
 }
-
-template <class T>
-auto make_ray_from(const Vec3<T>& pixel00_loc,
-                   const Vec3<T>& pixel_delta_u,
-                   const Vec3<T>& pixel_delta_v,
-                   const Vec3<T>& camera_center) {
-  return [&](auto pair) {
-    const auto i = static_cast<T>(pair.first);
-    const auto j = static_cast<T>(pair.second);
-    const auto pixel_center =
-        pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
-    const auto ray_direction = pixel_center - camera_center;
-    return Ray<T>{camera_center, ray_direction};
-  };
-};
 
 template <class T>
 [[nodiscard]] auto ray_color() {
   return [](auto ray) {
+    const auto t = hit_sphere(Point3<T>{0, 0, -1}, 0.5, ray);
+    if (t > 0.) {
+      const auto N = unit_vector<T>(ray.at(t) - Vec3<T>{0, 0, -1});
+      return 0.5 * Color<T>{N.x() + 1, N.y() + 1, N.z() + 1};
+    }
     auto unit_direction = unit_vector<T>(ray.direction());
     auto a = 0.5 * (unit_direction.y() + 1.);
     auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.};
@@ -60,34 +40,21 @@ template <class T>
 
 auto main() -> int {
   using Vec_t = double;
+  using Image_t = std::size_t;
+  using globals::get_height;
 
   // IMAGE
   constexpr auto aspect_ratio = 16. / 9.;
-  constexpr std::size_t img_width = 512;
-  constexpr std::size_t img_height = get_height(img_width, aspect_ratio);
+  constexpr Image_t img_width = 512;
+  constexpr Image_t img_height = get_height(img_width, aspect_ratio);
 
   // CAMERA & VIEWPORT
-  constexpr auto focal_length = 1.;
-  constexpr auto viewport_height = 2.;
-  constexpr auto viewport_width =
-      get_viewport_width(viewport_height, img_width, img_height);
   const auto camera_center = Point3<Vec_t>{0., 0., 0.};
-
-  const auto viewport_u = Vec3<Vec_t>{viewport_width, 0, 0};
-  const auto viewport_v = Vec3<Vec_t>{0, -viewport_height, 0};
-  const auto pixel_delta_u = calculate_pixel_delta(img_width)(viewport_u);
-  const auto pixel_delta_v = calculate_pixel_delta(img_height)(viewport_v);
-
-  const auto viewport_upper_left = camera_center -
-                                   Vec3<Vec_t>{0, 0, focal_length} -
-                                   (viewport_u + viewport_v) / 2.;
-  const auto pixel00_loc =
-      viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+  const auto viewport = Viewport<Vec_t>{camera_center, img_width, img_height};
 
   // RENDER
   auto cout_color = write_color(std::cout);
-  auto make_ray = make_ray_from<Vec_t>(pixel00_loc, pixel_delta_u,
-                                       pixel_delta_v, camera_center);
+  auto make_ray = viewport.ray_generator();
   auto lray_color = ray_color<Vec_t>();
 
   const auto rows = std::views::iota(0u, img_height);
