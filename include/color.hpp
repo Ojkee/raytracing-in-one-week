@@ -11,7 +11,7 @@
 template <class T>
 using Color = Vec3<T>;
 
-auto write_color(std::ostream& out) {
+inline auto write_color(std::ostream& out) {
   return [&out](auto pixel_color) {
     using namespace utiltools;
     using pipeline::operator|;

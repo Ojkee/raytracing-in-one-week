@@ -1,3 +1,6 @@
+![](2-img.png)
+
+```cpp
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -110,3 +113,4 @@ auto main() -> int {
 
   return 0;
 }
+```
