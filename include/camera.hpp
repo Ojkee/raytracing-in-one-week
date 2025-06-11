@@ -3,66 +3,107 @@
 
 #include <cerrno>
 #include <chrono>
+#include <cstddef>
 #include <iostream>
 #include "color.hpp"
 #include "globals.hpp"
 #include "hittable_list.hpp"
+#include "pipeline_helper.hpp"
+#include "ray.hpp"
+#include "vec3.hpp"
 #include "viewport.hpp"
 
 template <class T, class Image_t>
 class Camera {
  public:
-  Camera()
+  Camera(const Image_t& img_width = 400)
       : m_aspect_ratio(16. / 9.),
-        m_img_width(400),
+        m_img_width(img_width),
         m_img_height(globals::get_height(m_img_width, m_aspect_ratio)),
-        m_camera_center(Point3<T>{0, 0, 0}),
-        m_viewport(Viewport<T>(m_camera_center, m_img_width, m_img_height)) {};
+        m_viewport(Viewport<T>(Point3<T>{0, 0, 0}, m_img_width, m_img_height)),
+        m_samples_per_pixel(100),
+        m_pixel_samples_scale(1. / static_cast<double>(m_samples_per_pixel)) {};
 
-  auto render(const HittableList<T>& world) const noexcept -> void {
-    auto cout_color = write_color(std::cout);
-    auto make_ray = m_viewport.ray_generator();
-    auto lray_color = ray_color(world);
-
-    const auto rows = std::views::iota(0u, m_img_height);
-    const auto cols = std::views::iota(0u, m_img_width);
-
-    std::clog << "===   START   ===\n" << std::flush;
-    const auto start_time = std::chrono::high_resolution_clock::now();
-
-    std::cout << "P3\n" << m_img_width << ' ' << m_img_height << "\n255\n";
-    std::ranges::for_each(utiltools::cartesian_prod(rows, cols) |
-                              std::views::transform(make_ray) |
-                              std::views::transform(lray_color),
-                          cout_color);
-
-    std::clog << "===   DONE    ===\n";
-    const auto end_time = std::chrono::high_resolution_clock::now();
-    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        end_time - start_time);
-    std::clog << "took: " << duration.count() << "ms\n";
-  }
+  auto render(const HittableList<T>& world) const noexcept -> void;
 
  private:
-  [[nodiscard]] auto ray_color(const HittableList<T>& world) const noexcept {
-    return [&world](auto ray) {
-      HitRecord<T> hit_record;
-      if (world.hit(ray, Interval{0., globals::infinity<T>}, hit_record)) {
-        return 0.5 * (hit_record.normal + Color<T>{1, 1, 1});
-      }
-
-      auto unit_direction = unit_vector<T>(ray.direction());
-      auto a = 0.5 * (unit_direction.y() + 1.);
-      auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.};
-      return c;
-    };
-  }
+  [[nodiscard]] auto ray_color(const HittableList<T>& world) const noexcept;
+  [[nodiscard]] auto get_ray() const noexcept;
+  [[nodiscard]] auto sample_square() const noexcept -> Vec3<T>;
 
   const T m_aspect_ratio{};
   Image_t m_img_width{};
   Image_t m_img_height{};
-  Point3<T> m_camera_center{};
   Viewport<T> m_viewport{};
+  std::size_t m_samples_per_pixel{};
+  double m_pixel_samples_scale{};
 };
+
+template <class T, class Image_t>
+auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
+    -> void {
+  auto cout_color = write_color(std::cout);
+  auto generate_color = [this, make_ray = get_ray(),
+                         lray_color = ray_color(world)](auto pair) {
+    using pipeline::operator|;
+    auto c = Color<T>{0, 0, 0};
+    for (decltype(m_samples_per_pixel) i{}; i < m_samples_per_pixel; ++i)
+      c = c + (pair | make_ray | lray_color);
+    return c * m_pixel_samples_scale;
+  };
+
+  const auto rows = std::views::iota(0u, m_img_height);
+  const auto cols = std::views::iota(0u, m_img_width);
+
+  std::clog << "===   START   ===\n" << std::flush;
+  const auto start_time = std::chrono::high_resolution_clock::now();
+
+  std::cout << "P3\n" << m_img_width << ' ' << m_img_height << "\n255\n";
+  std::ranges::for_each(utiltools::cartesian_prod(rows, cols) |
+                            std::views::transform(generate_color),
+                        cout_color);
+
+  std::clog << "===   DONE    ===\n";
+  const auto end_time = std::chrono::high_resolution_clock::now();
+  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_time - start_time);
+  std::clog << "took: " << duration.count() << "ms\n";
+}
+
+template <class T, class Image_t>
+auto Camera<T, Image_t>::ray_color(
+    const HittableList<T>& world) const noexcept {
+  return [&world](auto ray) {
+    HitRecord<T> hit_record;
+    if (world.hit(ray, Interval{0., globals::infinity<T>}, hit_record)) {
+      return 0.5 * (hit_record.normal + Color<T>{1, 1, 1});
+    }
+
+    auto unit_direction = unit_vector<T>(ray.direction());
+    auto a = 0.5 * (unit_direction.y() + 1.);
+    auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.};
+    return c;
+  };
+}
+
+template <class T, class Image_t>
+auto Camera<T, Image_t>::get_ray() const noexcept {
+  return [this](auto pair) {
+    const auto i = static_cast<T>(pair.first);
+    const auto j = static_cast<T>(pair.second);
+    auto offset = sample_square();
+    auto pixel_sample = m_viewport.pixel00_loc() +
+                        ((i + offset.x()) * m_viewport.pixel_du()) +
+                        ((j + offset.y()) * m_viewport.pixel_dv());
+    auto ray_origin = m_viewport.camera_center();
+    auto ray_direction = pixel_sample - ray_origin;
+    return Ray<T>{ray_origin, ray_direction};
+  };
+}
+
+template <class T, class Image_t>
+auto Camera<T, Image_t>::sample_square() const noexcept -> Vec3<T> {
+  return Vec3<T>(globals::random_t<T>() - 0.5, globals::random_t<T>() - 0.5, 0);
+}
 
 #endif  // !CAMERA_HPP

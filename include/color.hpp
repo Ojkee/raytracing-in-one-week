@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ostream>
 
+#include "interval.hpp"
 #include "pipeline_helper.hpp"
 #include "utiltools.hpp"
 #include "vec3.hpp"
@@ -15,11 +16,14 @@ inline auto write_color(std::ostream& out) {
   return [&out](auto pixel_color) {
     using namespace utiltools;
     using pipeline::operator|;
+    static const auto interval = Interval<double>{0., 0.999};
+
+    auto lclamp = [](const auto& v) { return interval.clamp(v); };
+    auto lscale = scale(256.);
     auto lcast = clamp_cast<uint16_t>(0, 255);
-    auto lscale = scale(255.9);
-    auto r = pixel_color.x() | lscale | lcast;
-    auto g = pixel_color.y() | lscale | lcast;
-    auto b = pixel_color.z() | lscale | lcast;
+    auto r = pixel_color.x() | lclamp | lscale | lcast;
+    auto g = pixel_color.y() | lclamp | lscale | lcast;
+    auto b = pixel_color.z() | lclamp | lscale | lcast;
     out << r << ' ' << g << ' ' << b << '\n';
   };
 }

@@ -43,17 +43,6 @@ class Viewport {
     return m_pixel00_loc;
   };
 
-  [[nodiscard]] auto ray_generator() const noexcept {
-    return [&](auto pair) {
-      const auto i = static_cast<T>(pair.first);
-      const auto j = static_cast<T>(pair.second);
-      const auto pixel_center =
-          m_pixel00_loc + (i * m_pixel_du) + (j * m_pixel_dv);
-      const auto ray_direction = pixel_center - m_camera_center;
-      return Ray<T>{m_camera_center, ray_direction};
-    };
-  }
-
  private:
   template <class Image_t>
   constexpr auto get_viewport_width(const T& height,
