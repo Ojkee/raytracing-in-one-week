@@ -9,9 +9,10 @@ struct HitRecord {
   Point3<T> p{};
   Vec3<T> normal{};
   T t{};
-
   bool front_face{};
-  void set_face_normal(const Ray<T> ray, const Vec3<T>& outward_normal) {
+
+  auto set_face_normal(const Ray<T>& ray,
+                       const Vec3<T>& outward_normal) noexcept -> void {
     front_face = dot(ray.direction(), outward_normal) < 0;
     normal = front_face ? outward_normal : -outward_normal;
   }

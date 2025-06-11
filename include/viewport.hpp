@@ -19,8 +19,8 @@ class Viewport {
         m_camera_center(camera_center),
         m_u(Vec3<T>{m_width, 0, 0}),
         m_v(Vec3<T>{0, -m_height, 0}),
-        m_pixel_du(calculate_pixel_delta(img_width)(m_u)),
-        m_pixel_dv(calculate_pixel_delta(img_height)(m_v)),
+        m_pixel_du(calculate_pixel_delta(img_width, m_u)),
+        m_pixel_dv(calculate_pixel_delta(img_height, m_v)),
         m_upper_left(camera_center - Vec3<T>{0, 0, focal_length} -
                      (m_u + m_v) / 2.),
         m_pixel00_loc(m_upper_left + 0.5 * (m_pixel_du + m_pixel_dv)) {}
@@ -62,10 +62,9 @@ class Viewport {
     return height * static_cast<T>(img_width) / static_cast<T>(img_height);
   }
 
-  auto calculate_pixel_delta(T&& range) {
-    return [range = std::forward<T>(range)](auto p) {
-      return p / static_cast<std::remove_cvref_t<decltype(p)>::type>(range);
-    };
+  template <class Image_t>
+  auto calculate_pixel_delta(const Image_t& range, const Vec3<T>& p) {
+    return p / static_cast<T>(range);
   }
 
   T m_focal_length{};
