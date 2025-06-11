@@ -1,14 +1,17 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
+#include <algorithm>
 #include <cerrno>
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <iostream>
+#include <numeric>
+#include <ranges>
 #include "color.hpp"
 #include "globals.hpp"
 #include "hittable_list.hpp"
-#include "pipeline_helper.hpp"
 #include "ray.hpp"
 #include "vec3.hpp"
 #include "viewport.hpp"
@@ -45,10 +48,12 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
   auto cout_color = write_color(std::cout);
   auto generate_color = [this, make_ray = get_ray(),
                          lray_color = ray_color(world)](auto pair) {
-    using pipeline::operator|;
-    auto c = Color<T>{0, 0, 0};
-    for (decltype(m_samples_per_pixel) i{}; i < m_samples_per_pixel; ++i)
-      c = c + (pair | make_ray | lray_color);
+    auto lmake_ray = [&make_ray, &pair](auto) { return make_ray(pair); };
+    const auto pipe = std::views::iota(0u, m_samples_per_pixel) |
+                      std::views::transform(lmake_ray) |
+                      std::views::transform(lray_color);
+    const auto c =
+        std::ranges::fold_left(pipe, Color<T>{0, 0, 0}, std::plus<>());
     return c * m_pixel_samples_scale;
   };
 
