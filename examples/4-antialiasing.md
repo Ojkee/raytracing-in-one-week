@@ -1,3 +1,6 @@
+![](4-img.png)
+
+```cpp
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
@@ -111,3 +114,4 @@ auto Camera<T, Image_t>::sample_square() const noexcept -> Vec3<T> {
 }
 
 #endif  // !CAMERA_HPP
+```

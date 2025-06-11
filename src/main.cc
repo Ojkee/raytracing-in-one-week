@@ -11,7 +11,7 @@ auto main() -> int {
   world.add(Sphere{Point3<Vec_t>{0, -100.5, -1}, 100.});
 
   // CAMERA
-  auto camera = Camera<Vec_t, Image_t>{400};
+  auto camera = Camera<Vec_t, Image_t>{};
   camera.render(world);
 
   return 0;
