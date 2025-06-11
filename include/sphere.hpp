@@ -2,6 +2,7 @@
 #define SPHERE_HPP
 
 #include "hit_record.hpp"
+#include "interval.hpp"
 #include "ray.hpp"
 
 template <class T>
@@ -12,8 +13,7 @@ class Sphere {
       : m_center(center), m_radius(radius) {};
 
   [[nodiscard]] auto hit(const Ray<T> ray,
-                         const T& ray_tmin,
-                         const T& ray_tmax,
+                         const Interval<T>& ray_t,
                          HitRecord<T>& hit_record) const noexcept -> bool {
     const auto oc = m_center - ray.origin();
     const auto a = ray.direction().length_squared();
@@ -25,9 +25,9 @@ class Sphere {
 
     const auto sqrtd = std::sqrt(disciminant);
     auto root = (h - sqrtd) / a;
-    if (root <= ray_tmin || ray_tmax <= root) {
+    if (!ray_t.surrounds(root)) {
       root = (h + sqrtd) / a;
-      if (root <= ray_tmin || ray_tmax <= root)
+      if (!ray_t.surrounds(root))
         return false;
     }
 

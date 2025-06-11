@@ -4,6 +4,7 @@
 #include <variant>
 #include <vector>
 #include "hit_record.hpp"
+#include "interval.hpp"
 #include "ray.hpp"
 #include "sphere.hpp"
 
@@ -13,24 +14,24 @@ using Object_t = std::variant<Sphere<T>>;
 template <class T>
 class HittableList {
  public:
-  HittableList<T>(){};
-  HittableList<T>(const Object_t<T>& object) { add(object); };
+  HittableList() {};
+  HittableList(const Object_t<T>& object) { add(object); };
 
   auto add(const Object_t<T>& object) noexcept -> void {
     m_objects.emplace_back(object);
   }
   auto clear() noexcept -> void { m_objects.clear(); }
   [[nodiscard]] auto hit(const Ray<T>& ray,
-                         const T& ray_tmin,
-                         const T& ray_tmax,
+                         const Interval<T>& ray_t,
                          HitRecord<T>& hit_record) const noexcept -> bool {
     auto hit_rec = HitRecord<T>{};
     auto hit_anything = false;
-    auto closest = ray_tmax;
+    auto closest = ray_t.max();
 
     const auto hit_visitor = overloaded{
         [&](const Sphere<T>& sphere) {
-          return sphere.hit(ray, ray_tmin, closest, hit_rec);
+          const auto closest_interval = Interval{ray_t.min(), closest};
+          return sphere.hit(ray, closest_interval, hit_rec);
         },
     };
 
