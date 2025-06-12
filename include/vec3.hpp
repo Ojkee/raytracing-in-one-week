@@ -2,14 +2,13 @@
 #define VEC3_HPP
 
 #include <cmath>
+#include <cstdlib>
 #include <format>
-#include <functional>
 #include <iostream>
 #include <ostream>
-#include <ranges>
 #include <type_traits>
+#include "fn_cpp_helper.hpp"
 #include "globals.hpp"
-#include "pipeline_helper.hpp"
 
 #define LOG_V(v) std::clog << (v) << "\n"
 
@@ -54,6 +53,14 @@ class Vec3 {
     return std::sqrt(length_squared());
   }
 
+  template <class Fn>
+  auto apply_element_wise(Fn&& f) noexcept -> void {
+    using pipeline::operator|;
+    m_x = m_x | f;
+    m_y = m_y | f;
+    m_z = m_z | f;
+  }
+
   [[nodiscard]] static auto random(const T& min, const T& max) noexcept
       -> Vec3<T> {
     return Vec3<T>(globals::random_t<T>(min, max),
@@ -65,23 +72,13 @@ class Vec3 {
     return random(0, 1);
   }
 
-  // TODO: generates 1 unnecessary vec at the end
+  // TODO: different than in book cuz i didn't like while(true)
   [[nodiscard]] static inline auto random_in_unit_sphere() noexcept -> Vec3<T> {
-    // auto result = Vec3<T>{};
-    // auto is_in = [&result](const auto& v) {
-    //   if (v.length_squared() < 1) {
-    //     result = v;
-    //     return true;
-    //   }
-    //   return false;
-    // };
-    // auto gen_vec = [](auto) { return Vec3<T>::random(-1, 1); };
-    // const auto units = std::views::iota(0) | std::views::transform(gen_vec);
-    // std::ranges::find_if(units, is_in);
-    // return result;
     using pipeline::operator|;
     auto is_in = [](const auto& v) { return v.length_squared() < 1; };
-    auto norm = [&is_in](auto v) { return (is_in(v)) ? v : v / 2.; };
+    auto norm = [&is_in](auto v) {
+      return (is_in(v)) ? v : v / globals::random_t<T>(v.length_squared(), 2.);
+    };
     return Vec3<T>::random(-1, 1) | norm;
   }
 
@@ -94,6 +91,20 @@ class Vec3 {
     const auto on_unit_sphere = random_unit_vector();
     return (dot(on_unit_sphere, normal) > 0.) ? on_unit_sphere
                                               : -on_unit_sphere;
+  }
+
+  [[nodiscard]] static inline auto reflect(const Vec3<T>& v, const Vec3<T>& n) {
+    return v - 2 * dot(v, n) * n;
+  }
+
+  [[nodiscard]] auto near_zero() const noexcept -> bool {
+    using pipeline::operator|;
+    auto less_than_eps = [](auto v) { return v < 1e-8; };
+    auto labs = [](auto v) { return std::abs(v); };
+    const auto fx = m_x | labs | less_than_eps;
+    const auto fy = m_y | labs | less_than_eps;
+    const auto fz = m_z | labs | less_than_eps;
+    return fx && fy && fz;
   }
 
  private:

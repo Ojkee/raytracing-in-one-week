@@ -1,13 +1,20 @@
 #ifndef HIT_RECORD_HPP
 #define HIT_RECORD_HPP
 
+#include <variant>
+#include "materials/lambertian.hpp"
+#include "materials/metal.hpp"
 #include "ray.hpp"
 #include "vec3.hpp"
+
+template <class T>
+using Material_t = std::variant<std::monostate, Lambertian<T>, Metal<T>>;
 
 template <class T>
 struct HitRecord {
   Point3<T> p{};
   Vec3<T> normal{};
+  Material_t<T> mat{};
   T t{};
   bool front_face{};
 

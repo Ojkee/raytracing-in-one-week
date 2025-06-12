@@ -4,20 +4,20 @@
 #include <variant>
 #include <vector>
 #include "hit_record.hpp"
+#include "hittables/sphere.hpp"
 #include "interval.hpp"
 #include "ray.hpp"
-#include "sphere.hpp"
 
 template <class T>
-using Object_t = std::variant<Sphere<T>>;
+using Hittable_t = std::variant<Sphere<T>>;
 
 template <class T>
 class HittableList {
  public:
   HittableList() {};
-  HittableList(const Object_t<T>& object) { add(object); };
+  HittableList(const Hittable_t<T>& object) { add(object); };
 
-  auto add(const Object_t<T>& object) noexcept -> void {
+  auto add(const Hittable_t<T>& object) noexcept -> void {
     m_objects.emplace_back(object);
   }
   auto clear() noexcept -> void { m_objects.clear(); }
@@ -46,14 +46,7 @@ class HittableList {
   }
 
  private:
-  template <typename... Ts>
-  struct overloaded : Ts... {
-    using Ts::operator()...;
-  };
-  template <typename... Ts>
-  overloaded(Ts...) -> overloaded<Ts...>;
-
-  std::vector<Object_t<T>> m_objects{};
+  std::vector<Hittable_t<T>> m_objects{};
 };
 
 #endif  // !HITTABLE_LIST_HPP

@@ -5,8 +5,6 @@
 #include <ranges>
 #include <type_traits>
 
-#define ENABLE_PIPE using namespace pipeline;
-
 namespace pipeline {
 template <class T,
           class F,
@@ -16,5 +14,12 @@ auto operator|(T&& arg, F&& fn) {
   return std::invoke(std::forward<F>(fn), std::forward<T>(arg));
 }
 }  // namespace pipeline
+
+template <typename... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <typename... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 #endif  // !PIPELINE_HPP

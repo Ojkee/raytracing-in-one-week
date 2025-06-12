@@ -1,3 +1,6 @@
+![](imgs/6-img.png)
+
+```cpp
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
@@ -152,3 +155,4 @@ auto Camera<T, Image_t>::material_visit(Ray<T>& ray, HitRecord<T>& hit_record)
 }
 
 #endif  // !CAMERA_HPP
+```

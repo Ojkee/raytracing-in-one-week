@@ -9,9 +9,12 @@ template <class T>
 class Sphere {
  public:
   Sphere() = delete;
-  Sphere(const Point3<T>& center, const T& radius)
-      : m_center(center), m_radius(radius) {};
+  Sphere(const Point3<T>& center,
+         const T& radius,
+         const Material_t<T>& material)
+      : m_center(center), m_radius(radius), m_material(material) {};
 
+  // TODO: optional HitRecord
   [[nodiscard]] auto hit(const Ray<T> ray,
                          const Interval<T>& ray_t,
                          HitRecord<T>& hit_record) const noexcept -> bool {
@@ -35,6 +38,7 @@ class Sphere {
     hit_record.p = ray.at(hit_record.t);
     const auto outward_normal = (hit_record.p - m_center) / m_radius;
     hit_record.set_face_normal(ray, outward_normal);
+    hit_record.mat = m_material;
 
     return true;
   }
@@ -42,6 +46,7 @@ class Sphere {
  private:
   Point3<T> m_center;
   T m_radius;
+  Material_t<T> m_material;
 };
 
 #endif  // !SPHERE_HPP
