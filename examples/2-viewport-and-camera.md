@@ -1,4 +1,4 @@
-![](2-img.png)
+![](imgs/2-img.png)
 
 ```cpp
 #include <chrono>

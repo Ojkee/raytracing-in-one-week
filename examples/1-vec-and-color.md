@@ -1,4 +1,4 @@
-![](1-img.png)
+![](imgs/1-img.png)
 
 ```cpp
 #include <algorithm>

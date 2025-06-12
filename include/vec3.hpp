@@ -3,8 +3,15 @@
 
 #include <cmath>
 #include <format>
+#include <functional>
+#include <iostream>
 #include <ostream>
+#include <ranges>
 #include <type_traits>
+#include "globals.hpp"
+#include "pipeline_helper.hpp"
+
+#define LOG_V(v) std::clog << (v) << "\n"
 
 template <typename T,
           typename = typename std::enable_if_t<std::is_arithmetic_v<T>, T>>
@@ -23,20 +30,21 @@ class Vec3 {
     return Vec3(-m_x, -m_y, -m_z);
   };
 
-  Vec3<T>& operator+=(const Vec3& other) noexcept {
+  auto operator+=(const Vec3& other) noexcept -> Vec3<T>& {
     m_x += other.m_x;
     m_y += other.m_y;
     m_z += other.m_z;
+    return *this;
   }
 
-  Vec3<T>& operator*=(const T& t) noexcept {
+  auto operator*=(const T& t) noexcept -> Vec3<T>& {
     m_x *= t;
     m_y *= t;
     m_z *= t;
     return *this;
   }
 
-  Vec3<T>& operator/=(const T& t) noexcept { return *this *= 1 / t; }
+  auto operator/=(const T& t) noexcept -> Vec3<T>& { return *this *= 1 / t; }
 
   [[nodiscard]] auto length_squared() const noexcept -> T {
     return m_x * m_x + m_y * m_y + m_z * m_z;
@@ -44,6 +52,48 @@ class Vec3 {
 
   [[nodiscard]] auto length() const noexcept -> T {
     return std::sqrt(length_squared());
+  }
+
+  [[nodiscard]] static auto random(const T& min, const T& max) noexcept
+      -> Vec3<T> {
+    return Vec3<T>(globals::random_t<T>(min, max),
+                   globals::random_t<T>(min, max),
+                   globals::random_t<T>(min, max));
+  }
+
+  [[nodiscard]] static auto random() noexcept -> Vec3<T> {
+    return random(0, 1);
+  }
+
+  // TODO: generates 1 unnecessary vec at the end
+  [[nodiscard]] static inline auto random_in_unit_sphere() noexcept -> Vec3<T> {
+    // auto result = Vec3<T>{};
+    // auto is_in = [&result](const auto& v) {
+    //   if (v.length_squared() < 1) {
+    //     result = v;
+    //     return true;
+    //   }
+    //   return false;
+    // };
+    // auto gen_vec = [](auto) { return Vec3<T>::random(-1, 1); };
+    // const auto units = std::views::iota(0) | std::views::transform(gen_vec);
+    // std::ranges::find_if(units, is_in);
+    // return result;
+    using pipeline::operator|;
+    auto is_in = [](const auto& v) { return v.length_squared() < 1; };
+    auto norm = [&is_in](auto v) { return (is_in(v)) ? v : v / 2.; };
+    return Vec3<T>::random(-1, 1) | norm;
+  }
+
+  [[nodiscard]] static inline auto random_unit_vector() -> Vec3<T> {
+    return unit_vector<T>(random_in_unit_sphere());
+  }
+
+  [[nodiscard]] static inline auto random_on_hemisphere(
+      const Vec3<T>& normal) noexcept -> Vec3<T> {
+    const auto on_unit_sphere = random_unit_vector();
+    return (dot(on_unit_sphere, normal) > 0.) ? on_unit_sphere
+                                              : -on_unit_sphere;
   }
 
  private:

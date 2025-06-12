@@ -1,4 +1,4 @@
-![](imgs/4-img.png)
+![](imgs/5-img.png)
 
 ```cpp
 #ifndef CAMERA_HPP
@@ -27,12 +27,16 @@ class Camera {
         m_img_height(globals::get_height(m_img_width, m_aspect_ratio)),
         m_viewport(Viewport<T>(Point3<T>{0, 0, 0}, m_img_width, m_img_height)),
         m_samples_per_pixel(100),
-        m_pixel_samples_scale(1. / static_cast<double>(m_samples_per_pixel)) {};
+        m_pixel_samples_scale(1. / static_cast<double>(m_samples_per_pixel)),
+        m_max_depth(50) {};
 
   auto render(const HittableList<T>& world) const noexcept -> void;
 
  private:
-  [[nodiscard]] auto ray_color(const HittableList<T>& world) const noexcept;
+  [[nodiscard]] auto ray_color(const Ray<T>& ray,
+                               int depth,
+                               const HittableList<T>& world) const noexcept
+      -> Color<T>;
   [[nodiscard]] auto get_ray() const noexcept;
   [[nodiscard]] auto sample_square() const noexcept -> Vec3<T>;
 
@@ -42,21 +46,26 @@ class Camera {
   Viewport<T> m_viewport{};
   std::size_t m_samples_per_pixel{};
   double m_pixel_samples_scale{};
+  int m_max_depth{};
 };
 
 template <class T, class Image_t>
 auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
     -> void {
   auto cout_color = write_color(std::cout);
-  auto generate_color = [this, make_ray = get_ray(),
-                         lray_color = ray_color(world)](auto pair) {
+  auto lray_color = [this, &world](auto ray) {
+    return ray_color(ray, m_max_depth, world);
+  };
+  auto generate_color = [samples = m_samples_per_pixel,
+                         scale = m_pixel_samples_scale, make_ray = get_ray(),
+                         &lray_color](auto pair) {
     auto lmake_ray = [&make_ray, &pair](auto) { return make_ray(pair); };
-    const auto pipe = std::views::iota(0u, m_samples_per_pixel) |
+    const auto pipe = std::views::iota(0u, samples) |
                       std::views::transform(lmake_ray) |
                       std::views::transform(lray_color);
     const auto c =
         std::ranges::fold_left(pipe, Color<T>{0, 0, 0}, std::plus<>());
-    return c * m_pixel_samples_scale;
+    return c * scale;
   };
 
   const auto rows = std::views::iota(0u, m_img_height);
@@ -78,19 +87,23 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
 }
 
 template <class T, class Image_t>
-auto Camera<T, Image_t>::ray_color(
-    const HittableList<T>& world) const noexcept {
-  return [&world](auto ray) {
-    HitRecord<T> hit_record;
-    if (world.hit(ray, Interval{0., globals::infinity<T>}, hit_record)) {
-      return 0.5 * (hit_record.normal + Color<T>{1, 1, 1});
-    }
+auto Camera<T, Image_t>::ray_color(const Ray<T>& ray,
+                                   int depth,
+                                   const HittableList<T>& world) const noexcept
+    -> Color<T> {
+  if (depth <= 0)
+    return Color<T>(0, 0, 0);
 
-    auto unit_direction = unit_vector<T>(ray.direction());
-    auto a = 0.5 * (unit_direction.y() + 1.);
-    auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.};
-    return c;
-  };
+  HitRecord<T> hit_record;
+  if (world.hit(ray, Interval{0.001, globals::infinity<T>}, hit_record)) {
+    const auto direction = Vec3<T>::random_on_hemisphere(hit_record.normal);
+    return 0.5 * ray_color(Ray<T>{hit_record.p, direction}, depth - 1, world);
+  }
+
+  auto unit_direction = unit_vector<T>(ray.direction());
+  auto a = 0.5 * (unit_direction.y() + 1.);
+  auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.};
+  return c;
 }
 
 template <class T, class Image_t>
@@ -115,3 +128,4 @@ auto Camera<T, Image_t>::sample_square() const noexcept -> Vec3<T> {
 
 #endif  // !CAMERA_HPP
 ```
+
