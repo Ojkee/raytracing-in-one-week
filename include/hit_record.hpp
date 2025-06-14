@@ -2,13 +2,15 @@
 #define HIT_RECORD_HPP
 
 #include <variant>
+#include "materials/dielectric.hpp"
 #include "materials/lambertian.hpp"
 #include "materials/metal.hpp"
 #include "ray.hpp"
 #include "vec3.hpp"
 
 template <class T>
-using Material_t = std::variant<std::monostate, Lambertian<T>, Metal<T>>;
+using Material_t =
+    std::variant<std::monostate, Lambertian<T>, Metal<T>, Dielectric<T>>;
 
 template <class T>
 struct HitRecord {

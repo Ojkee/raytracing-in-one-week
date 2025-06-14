@@ -34,7 +34,7 @@ inline auto random_t(const T& min, const T& max) -> T {
 
 template <class T>
 inline auto random_t() -> T {
-  return random_t<T>(0, 1);
+  return random_t<T>(0., 1.);
 }
 
 }  // namespace globals

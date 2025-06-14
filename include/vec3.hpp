@@ -1,6 +1,7 @@
 #ifndef VEC3_HPP
 #define VEC3_HPP
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <format>
@@ -25,6 +26,14 @@ class Vec3 {
   [[nodiscard]] auto y() const noexcept -> const T& { return m_y; };
   [[nodiscard]] auto z() const noexcept -> const T& { return m_z; };
 
+  [[nodiscard]] auto length_squared() const noexcept -> T {
+    return m_x * m_x + m_y * m_y + m_z * m_z;
+  }
+
+  [[nodiscard]] auto length() const noexcept -> T {
+    return std::sqrt(length_squared());
+  }
+
   [[nodiscard]] auto operator-() const noexcept -> Vec3<T> {
     return Vec3(-m_x, -m_y, -m_z);
   };
@@ -44,14 +53,6 @@ class Vec3 {
   }
 
   auto operator/=(const T& t) noexcept -> Vec3<T>& { return *this *= 1 / t; }
-
-  [[nodiscard]] auto length_squared() const noexcept -> T {
-    return m_x * m_x + m_y * m_y + m_z * m_z;
-  }
-
-  [[nodiscard]] auto length() const noexcept -> T {
-    return std::sqrt(length_squared());
-  }
 
   template <class Fn>
   auto apply_element_wise(Fn&& f) noexcept -> void {
@@ -74,16 +75,22 @@ class Vec3 {
 
   // TODO: different than in book cuz i didn't like while(true)
   [[nodiscard]] static inline auto random_in_unit_sphere() noexcept -> Vec3<T> {
-    using pipeline::operator|;
-    auto is_in = [](const auto& v) { return v.length_squared() < 1; };
-    auto norm = [&is_in](auto v) {
-      return (is_in(v)) ? v : v / globals::random_t<T>(v.length_squared(), 2.);
-    };
-    return Vec3<T>::random(-1, 1) | norm;
+    // using pipeline::operator|;
+    // auto is_in = [](const auto& v) { return v.length_squared() < 1; };
+    // auto norm = [&is_in](auto v) {
+    //   return (is_in(v)) ? v : v /
+    //   globals::random_t<T>(v.length_squared(), 2.);
+    // };
+    // return Vec3<T>::random(-1, 1) | norm;
+    while (true) {
+      auto p = Vec3<T>::random(-1., 1.);
+      if (p.length_squared() < 1)
+        return p;
+    }
   }
 
   [[nodiscard]] static inline auto random_unit_vector() -> Vec3<T> {
-    return unit_vector<T>(random_in_unit_sphere());
+    return unit_vector<T>(Vec3<T>::random_in_unit_sphere());
   }
 
   [[nodiscard]] static inline auto random_on_hemisphere(
@@ -91,10 +98,6 @@ class Vec3 {
     const auto on_unit_sphere = random_unit_vector();
     return (dot(on_unit_sphere, normal) > 0.) ? on_unit_sphere
                                               : -on_unit_sphere;
-  }
-
-  [[nodiscard]] static inline auto reflect(const Vec3<T>& v, const Vec3<T>& n) {
-    return v - 2 * dot(v, n) * n;
   }
 
   [[nodiscard]] auto near_zero() const noexcept -> bool {
@@ -112,18 +115,21 @@ class Vec3 {
 };
 
 template <class T>
-inline auto operator<<(std::ostream& out, const Vec3<T>& v) noexcept
+[[nodiscard]] inline auto operator<<(std::ostream& out,
+                                     const Vec3<T>& v) noexcept
     -> std::ostream& {
   return out << std::format("{} {} {}", v.x(), v.y(), v.z());
 }
 
 template <class T>
-inline auto operator+(const Vec3<T>& u, const Vec3<T>& v) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto operator+(const Vec3<T>& u, const Vec3<T>& v) noexcept
+    -> Vec3<T> {
   return Vec3<T>(u.x() + v.x(), u.y() + v.y(), u.z() + v.z());
 }
 
 template <class T>
-inline auto operator-(const Vec3<T>& u, const Vec3<T>& v) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto operator-(const Vec3<T>& u, const Vec3<T>& v) noexcept
+    -> Vec3<T> {
   auto x = u.x() - v.x();
   auto y = u.y() - v.y();
   auto z = u.z() - v.z();
@@ -131,47 +137,70 @@ inline auto operator-(const Vec3<T>& u, const Vec3<T>& v) noexcept -> Vec3<T> {
 }
 
 template <class T>
-inline auto operator-(const Vec3<T>& v) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto operator-(const Vec3<T>& v) noexcept -> Vec3<T> {
   return Vec3<T>(-v.x(), -v.y(), -v.z());
 }
 
 template <class T>
-inline auto operator*(const Vec3<T>& u, const Vec3<T>& v) noexcept -> Vec3<T> {
-  return Vec3<T>(u.x() * v.x(), u.y() * v.y(), u.z() * u.z());
+[[nodiscard]] inline auto operator*(const Vec3<T>& u, const Vec3<T>& v) noexcept
+    -> Vec3<T> {
+  return Vec3<T>(u.x() * v.x(), u.y() * v.y(), u.z() * v.z());
 }
 
 template <class T>
-inline auto operator*(const Vec3<T>& v, const T& t) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto operator*(const Vec3<T>& v, const T& t) noexcept
+    -> Vec3<T> {
   auto u{v};
   return u *= t;
 }
 
 template <class T>
-inline auto operator*(const T& t, const Vec3<T>& v) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto operator*(const T& t, const Vec3<T>& v) noexcept
+    -> Vec3<T> {
   return v * t;
 }
 
 template <class T>
-inline auto operator/(const Vec3<T>& v, const T& t) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto operator/(const Vec3<T>& v, const T& t) noexcept
+    -> Vec3<T> {
   auto u{v};
   u /= t;
   return u;
 }
 
 template <class T>
-inline auto dot(const Vec3<T>& u, const Vec3<T>& v) noexcept -> T {
+[[nodiscard]] inline auto dot(const Vec3<T>& u, const Vec3<T>& v) noexcept
+    -> T {
   return u.x() * v.x() + u.y() * v.y() + u.z() * v.z();
 }
 
 template <class T>
-inline auto cross(const Vec3<T>& u, const Vec3<T>& v) noexcept -> Vec3<T> {
+[[nodiscard]] inline auto cross(const Vec3<T>& u, const Vec3<T>& v) noexcept
+    -> Vec3<T> {
   return Vec3<T>(u.y() * v.z() - u.z() * v.y(), u.z() * v.x() - u.x() * v.z(),
                  u.x() * v.y() - u.y() * v.x());
 }
 
-template <class R, class T>
-inline auto unit_vector(const Vec3<T>& v) noexcept -> Vec3<R> {
+template <class T>
+[[nodiscard]] inline auto unit_vector(const Vec3<T>& v) noexcept -> Vec3<T> {
   return v / v.length();
+}
+
+template <class T>
+[[nodiscard]] inline auto reflect(const Vec3<T>& v, const Vec3<T>& n) noexcept
+    -> Vec3<T> {
+  return v - 2 * dot(v, n) * n;
+}
+
+template <class T>
+[[nodiscard]] inline auto refract(const Vec3<T>& uv,
+                                  const Vec3<T>& n,
+                                  const T& etai_over_etat) noexcept -> Vec3<T> {
+  const auto cos_theta = std::min<T>(dot(-uv, n), 1.);
+  const auto r_out_perp = etai_over_etat * (uv + cos_theta * n);
+  const auto r_out_parallel =
+      -std::sqrt(std::abs(1. - r_out_perp.length_squared())) * n;
+  return r_out_perp + r_out_parallel;
 }
 
 #endif  // !VEC3_HPP

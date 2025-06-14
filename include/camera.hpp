@@ -35,13 +35,13 @@ class Camera {
 
  private:
   [[nodiscard]] auto ray_color(Ray<T>& ray,
-                               int depth,
+                               const int depth,
                                const HittableList<T>& world) const noexcept
       -> Color<T>;
   [[nodiscard]] auto get_ray() const noexcept;
   [[nodiscard]] auto sample_square() const noexcept -> Vec3<T>;
-  [[nodiscard]] auto material_visit(Ray<T>& ray,
-                                    HitRecord<T>& hit_record) const noexcept;
+  [[nodiscard]] auto material_scatter(Ray<T>& ray,
+                                      HitRecord<T>& hit_record) const noexcept;
 
   const T m_aspect_ratio{};
   Image_t m_img_width{};
@@ -91,26 +91,26 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
 
 template <class T, class Image_t>
 auto Camera<T, Image_t>::ray_color(Ray<T>& ray,
-                                   int depth,
+                                   const int depth,
                                    const HittableList<T>& world) const noexcept
     -> Color<T> {
   if (depth <= 0)
-    return Color<T>(0, 0, 0);
+    return Color<T>{0., 0., 0.};
 
   HitRecord<T> hit_record{};
 
   if (world.hit(ray, Interval{0.001, globals::infinity<T>}, hit_record)) {
     if (auto [was_scattered, s_ray, attenuation] =
-            std::visit(material_visit(ray, hit_record), hit_record.mat);
+            std::visit(material_scatter(ray, hit_record), hit_record.mat);
         was_scattered == true) {
       return attenuation * ray_color(s_ray, depth - 1, world);
     }
     return Color<T>{0., 0., 0.};
   }
 
-  auto unit_direction = unit_vector<T>(ray.direction());
-  auto a = 0.5 * (unit_direction.y() + 1.);
-  auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.};
+  const auto unit_direction = unit_vector<T>(ray.direction());
+  const auto a = 0.5 * (unit_direction.y() + 1.);
+  const auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.0};
   return c;
 }
 
@@ -135,7 +135,7 @@ auto Camera<T, Image_t>::sample_square() const noexcept -> Vec3<T> {
 }
 
 template <class T, class Image_t>
-auto Camera<T, Image_t>::material_visit(Ray<T>& ray, HitRecord<T>& hit_record)
+auto Camera<T, Image_t>::material_scatter(Ray<T>& ray, HitRecord<T>& hit_record)
     const noexcept {
   return overloaded{
       [](std::monostate) {

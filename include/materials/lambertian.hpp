@@ -10,7 +10,7 @@ struct HitRecord;
 template <class T>
 class Lambertian {
  public:
-  Lambertian<T>(const Color<T>& albedo) : m_albedo(albedo){};
+  Lambertian(const Color<T>& albedo) : m_albedo(albedo) {};
 
   // TODO: optional tuple<hit_record, color>
   [[nodiscard]] auto scatter([[maybe_unused]] const Ray<T>& ray_in,
@@ -21,7 +21,7 @@ class Lambertian {
     if (scatter_direction.near_zero())
       scatter_direction = hit_record.normal;
 
-    scattered = Ray<T>(hit_record.p, scatter_direction);
+    scattered = Ray<T>{hit_record.p, scatter_direction};
     attenuation = m_albedo;
     return true;
   }
