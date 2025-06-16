@@ -1,3 +1,4 @@
+#include <cmath>
 #include "camera.hpp"
 #include "color.hpp"
 #include "hit_record.hpp"
@@ -5,6 +6,7 @@
 #include "materials/dielectric.hpp"
 #include "materials/lambertian.hpp"
 #include "materials/metal.hpp"
+#include "ray.hpp"
 
 auto main() -> int {
   using T = double;
@@ -26,7 +28,18 @@ auto main() -> int {
   world.add(Sphere{Point3<T>{1, 0, -1.0}, 0.5, material_right});
 
   // CAMERA
-  auto camera = Camera<T, Image_t>{};
+  const auto image_width = Image_t{512};
+  const auto aspect_ratio = T{16. / 9.};
+  const auto samples_per_pixel = 100;
+  const auto max_depth = 100;
+  const auto v_fov = T{20};
+  const auto lookfrom = Vec3<T>{-2, 2, 1};
+  const auto lookat = Vec3<T>{0, 0, -1};
+  const auto v_up = Vec3<T>{0, 1, 0};
+
+  auto camera = Camera<T, Image_t>{image_width, aspect_ratio, samples_per_pixel,
+                                   max_depth,   v_fov,        lookfrom,
+                                   lookat,      v_up};
   camera.render(world);
 
   return 0;

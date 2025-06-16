@@ -1,4 +1,4 @@
-![](imgs/6-img.png)
+![](imgs/7-img.png)
 
 ```cpp
 #ifndef DIELECTRIC_HPP

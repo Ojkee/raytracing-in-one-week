@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <functional>
 #include <iostream>
@@ -22,18 +23,41 @@
 template <class T, class Image_t>
 class Camera {
  public:
-  Camera(const Image_t& img_width = 512)
-      : m_aspect_ratio(16. / 9.),
-        m_img_width(img_width),
-        m_img_height(globals::get_height(m_img_width, m_aspect_ratio)),
-        m_viewport(Viewport<T>(Point3<T>{0, 0, 0}, m_img_width, m_img_height)),
-        m_samples_per_pixel(100),
-        m_pixel_samples_scale(1. / static_cast<double>(m_samples_per_pixel)),
-        m_max_depth(50) {}
+  Camera<T, Image_t>(const Image_t& image_width,
+                     const T& aspect_ratio,
+                     const std::size_t& samples_per_pixel,
+                     const int& max_depth,
+                     const T& v_fov,
+                     const Vec3<T>& lookfrom,
+                     const Vec3<T>& lookat,
+                     const Vec3<T>& v_up)
+      : m_aspect_ratio(aspect_ratio),
+        m_img_width(image_width),
+        m_img_height(get_height(m_img_width, m_aspect_ratio)),
+
+        m_samples_per_pixel(samples_per_pixel),
+        m_pixel_samples_scale(1. / static_cast<T>(m_samples_per_pixel)),
+
+        m_v_fov(v_fov),
+        m_focal_lenght((lookfrom - lookat).length()),
+        m_theta(globals::degrees_to_radians(m_v_fov)),
+        m_h(std::tan(m_theta / 2.)),
+        m_viewport(Viewport<T>(m_img_width,
+                               m_img_height,
+                               m_focal_lenght,
+                               2 * m_h * m_focal_lenght,
+                               lookfrom,
+                               lookat,
+                               v_up)),
+        m_max_depth(max_depth) {}
 
   auto render(const HittableList<T>& world) const noexcept -> void;
 
  private:
+  template <class Ratio>
+  constexpr auto get_height(const Image_t& width, const Ratio& ratio)
+      -> const Image_t;
+
   [[nodiscard]] auto ray_color(Ray<T>& ray,
                                const int depth,
                                const HittableList<T>& world) const noexcept
@@ -44,13 +68,28 @@ class Camera {
                                       HitRecord<T>& hit_record) const noexcept;
 
   const T m_aspect_ratio{};
-  Image_t m_img_width{};
-  Image_t m_img_height{};
-  Viewport<T> m_viewport{};
-  std::size_t m_samples_per_pixel{};
-  double m_pixel_samples_scale{};
-  int m_max_depth{};
+  const Image_t m_img_width{};
+  const Image_t m_img_height{};
+  const std::size_t m_samples_per_pixel{};
+  const T m_pixel_samples_scale{};
+  const T m_v_fov{};
+  const T m_focal_lenght{};
+  const T m_theta{};
+  const T m_h{};
+  const Viewport<T> m_viewport{};
+  const int m_max_depth{};
 };
+
+template <class T, class Image_t>
+template <class Ratio>
+constexpr auto Camera<T, Image_t>::get_height(const Image_t& width,
+                                              const Ratio& ratio)
+    -> const Image_t {
+  auto h = static_cast<Ratio>(width) / ratio;
+  if (h < 1.0)
+    h = 1.0;
+  return static_cast<Image_t>(h);
+}
 
 template <class T, class Image_t>
 auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
