@@ -36,10 +36,14 @@ auto main() -> int {
   const auto lookfrom = Vec3<T>{-2, 2, 1};
   const auto lookat = Vec3<T>{0, 0, -1};
   const auto v_up = Vec3<T>{0, 1, 0};
+  const auto defocus_angle = T{10};
+  const auto focus_distance = T{3.4};
 
-  auto camera = Camera<T, Image_t>{image_width, aspect_ratio, samples_per_pixel,
-                                   max_depth,   v_fov,        lookfrom,
-                                   lookat,      v_up};
+  auto camera =
+      Camera<T, Image_t>{image_width,   aspect_ratio, samples_per_pixel,
+                         max_depth,     v_fov,        lookfrom,
+                         lookat,        v_up,         defocus_angle,
+                         focus_distance};
   camera.render(world);
 
   return 0;

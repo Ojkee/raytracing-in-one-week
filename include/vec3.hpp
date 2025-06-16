@@ -89,6 +89,16 @@ class Vec3 {
     }
   }
 
+  [[nodiscard]] static inline auto random_in_unit_disk() noexcept
+      -> const Vec3<T> {
+    while (true) {
+      auto p =
+          Vec3<T>{globals::random_t<T>(-1, 1), globals::random_t<T>(-1, 1), 0};
+      if (p.length_squared() < 1)
+        return p;
+    }
+  }
+
   [[nodiscard]] static inline auto random_unit_vector() -> Vec3<T> {
     return unit_vector<T>(Vec3<T>::random_in_unit_sphere());
   }
