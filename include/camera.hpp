@@ -106,6 +106,9 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
                          scale = m_pixel_samples_scale, make_ray = get_ray(),
                          &lray_color](auto pair) {
     auto lmake_ray = [&make_ray, &pair](auto) { return make_ray(pair); };
+    if (pair.first == 0 && pair.second % 5 == 0) {
+      std::clog << "Row: " << pair.second << "\n";
+    }
     const auto pipe = std::views::iota(0u, samples) |
                       std::views::transform(lmake_ray) |
                       std::views::transform(lray_color);
@@ -117,7 +120,8 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
   const auto rows = std::views::iota(0u, m_img_height);
   const auto cols = std::views::iota(0u, m_img_width);
 
-  std::clog << "===   START   ===\n" << std::flush;
+  std::clog << "===   START   ===\nnumber of rows: " << m_img_height << "\n"
+            << std::flush;
   const auto start_time = std::chrono::high_resolution_clock::now();
 
   std::cout << "P3\n" << m_img_width << ' ' << m_img_height << "\n255\n";
@@ -127,9 +131,10 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
 
   std::clog << "===   DONE    ===\n";
   const auto end_time = std::chrono::high_resolution_clock::now();
-  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-      end_time - start_time);
-  std::clog << "took: " << duration.count() << "ms\n";
+  const auto duration =
+      std::chrono::duration<float, std::chrono::minutes::period>(end_time -
+                                                                 start_time);
+  std::clog << "took: " << duration.count() << " min\n";
 }
 
 template <class T, class Image_t>

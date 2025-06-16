@@ -28,7 +28,7 @@ auto clamp_cast(T1&& min, T2&& max) {
 }
 
 template <std::ranges::input_range R1, std::ranges::input_range R2>
-auto cartesian_prod(const R1& r1, const R2& r2) {
+[[nodiscard]] auto cartesian_prod(const R1& r1, const R2& r2) {
   auto inner = [=](auto x) {
     return std::views::transform(r2, [=](auto y) { return std::pair{y, x}; });
   };
