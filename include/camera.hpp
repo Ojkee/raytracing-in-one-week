@@ -8,14 +8,15 @@
 #include <cstddef>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <ranges>
-#include <tuple>
 #include <variant>
 #include "color.hpp"
 #include "fn_cpp_helper.hpp"
 #include "globals.hpp"
 #include "hit_record.hpp"
 #include "hittable_list.hpp"
+#include "materials/material_t.hpp"
 #include "ray.hpp"
 #include "vec3.hpp"
 #include "viewport.hpp"
@@ -61,15 +62,16 @@ class Camera {
   constexpr auto get_height(const Image_t& width, const Ratio& ratio)
       -> const Image_t;
 
-  [[nodiscard]] auto ray_color(Ray<T>& ray,
+  [[nodiscard]] auto ray_color(const Ray<T>& ray,
                                const int depth,
                                const HittableList<T>& world) const noexcept
       -> Color<T>;
   [[nodiscard]] auto get_ray() const noexcept;
   [[nodiscard]] auto sample_square() const noexcept -> Vec3<T>;
   [[nodiscard]] auto defocus_disk_sample() const noexcept -> const Point3<T>;
-  [[nodiscard]] auto material_scatter(Ray<T>& ray,
-                                      HitRecord<T>& hit_record) const noexcept;
+  [[nodiscard]] auto material_scatter(
+      const Ray<T>& ray,
+      const HitRecord<T>& hit_record) const noexcept;
 
   const T m_aspect_ratio{};
   const Image_t m_img_width{};
@@ -138,7 +140,7 @@ auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
 }
 
 template <class T, class Image_t>
-auto Camera<T, Image_t>::ray_color(Ray<T>& ray,
+auto Camera<T, Image_t>::ray_color(const Ray<T>& ray,
                                    const int depth,
                                    const HittableList<T>& world) const noexcept
     -> Color<T> {
@@ -148,9 +150,10 @@ auto Camera<T, Image_t>::ray_color(Ray<T>& ray,
   HitRecord<T> hit_record{};
 
   if (world.hit(ray, Interval{0.001, globals::infinity<T>}, hit_record)) {
-    if (auto [was_scattered, s_ray, attenuation] =
+    if (auto scatter_opt =
             std::visit(material_scatter(ray, hit_record), hit_record.mat);
-        was_scattered == true) {
+        scatter_opt) {
+      const auto [s_ray, attenuation] = scatter_opt.value();
       return attenuation * ray_color(s_ray, depth - 1, world);
     }
     return Color<T>{0., 0., 0.};
@@ -193,18 +196,15 @@ auto Camera<T, Image_t>::defocus_disk_sample() const noexcept
 }
 
 template <class T, class Image_t>
-auto Camera<T, Image_t>::material_scatter(Ray<T>& ray, HitRecord<T>& hit_record)
-    const noexcept {
+auto Camera<T, Image_t>::material_scatter(
+    const Ray<T>& ray,
+    const HitRecord<T>& hit_record) const noexcept {
   return overloaded{
-      [](std::monostate) {
-        return std::make_tuple(false, Ray<T>{}, Color<T>{});
+      [](std::monostate) -> std::optional<ScatterData_t<T>> {
+        return std::nullopt;
       },
-      [&ray, &hit_record](const auto& m) {
-        auto scattered_ray = Ray<T>{};
-        auto attenuation = Color<T>{};
-        auto was_scattered =
-            m.scatter(ray, hit_record, attenuation, scattered_ray);
-        return std::make_tuple(was_scattered, scattered_ray, attenuation);
+      [&ray, &hit_record](const auto& m) -> std::optional<ScatterData_t<T>> {
+        return m.scatter(ray, hit_record);
       },
   };
 }

@@ -58,6 +58,12 @@ auto HittableList<T>::hit(const Ray<T>& ray,
     }
   }
 
+  // TODO
+  // auto make_interval = [&ray_t](auto&& closest) {
+  //   return Interval{ray_t.min(), closest};
+  // };
+  // std::ranges::fold_left(m_objects, {}, []() {});
+
   return hit_anything;
 }
 

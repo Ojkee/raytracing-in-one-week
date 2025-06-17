@@ -3,8 +3,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
+#include <utility>
 #include "color.hpp"
 #include "globals.hpp"
+#include "materials/material_t.hpp"
 #include "ray.hpp"
 #include "vec3.hpp"
 
@@ -19,18 +22,18 @@ class Dielectric {
       : m_refraction_index(refraction_index) {};
 
   [[nodiscard]] auto scatter(const Ray<T>& ray_in,
-                             const HitRecord<T>& hit_record,
-                             Color<T>& attenuation,
-                             Ray<T>& scattered) const noexcept -> bool {
-    attenuation = Color<T>{1., 1., 1.};
-    T ri =
+                             const HitRecord<T>& hit_record) const noexcept
+      -> std::optional<ScatterData_t<T>> {
+    const auto attenuation = Color<T>{1., 1., 1.};
+    const T ri =
         hit_record.front_face ? (1. / m_refraction_index) : m_refraction_index;
 
-    auto unit_direction = unit_vector(ray_in.direction());
-    auto cos_theta = std::min<T>(dot(-unit_direction, hit_record.normal), 1.);
-    T sin_theta = std::sqrt(1. - cos_theta * cos_theta);
+    const auto unit_direction = unit_vector(ray_in.direction());
+    const auto cos_theta =
+        std::min<T>(dot(-unit_direction, hit_record.normal), 1.);
+    const T sin_theta = std::sqrt(1. - cos_theta * cos_theta);
 
-    auto cannot_refract = ri * sin_theta > 1.;
+    const auto cannot_refract = ri * sin_theta > 1.;
 
     auto direction = Vec3<T>{};
     if (cannot_refract || reflectance(cos_theta, ri) > globals::random_t<T>())
@@ -38,8 +41,8 @@ class Dielectric {
     else
       direction = refract(unit_direction, hit_record.normal, ri);
 
-    scattered = Ray<T>{hit_record.p, direction};
-    return true;
+    const auto scattered = Ray<T>{hit_record.p, direction};
+    return std::optional(std::make_pair(scattered, attenuation));
   }
 
  private:
