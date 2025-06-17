@@ -14,11 +14,11 @@ using Material_t =
 
 template <class T>
 struct HitRecord {
-  Point3<T> p{};
-  Vec3<T> normal{};
-  Material_t<T> mat{};
   T t{};
+  Point3<T> p{};
+  Material_t<T> mat{};
   bool front_face{};
+  Vec3<T> normal{};
 
   auto set_face_normal(const Ray<T>& ray,
                        const Vec3<T>& outward_normal) noexcept -> void {

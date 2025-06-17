@@ -26,7 +26,7 @@ auto main() -> int {
   world.add(Sphere<T>{Point3<T>{4, 1, 0}, 1.0, metal});
 
   // CAMERA
-  const auto image_width = Image_t{100};
+  const auto image_width = Image_t{200};
   const auto aspect_ratio = T{16. / 9.};
   const auto samples_per_pixel = 100;
   const auto max_depth = 50;
