@@ -42,7 +42,7 @@ template <class T>
 auto HittableList<T>::hit(const Ray<T>& ray,
                           const Interval<T>& ray_t) const noexcept
     -> const std::optional<HitRecord<T>> {
-  const auto make_hit_visitor = [&ray](auto closest) {
+  const auto make_hit_visitor = [&ray](const auto& closest) {
     return overloaded{
         [ray, closest](const Sphere<T>& sphere) {
           return sphere.hit(ray, closest);
@@ -55,15 +55,15 @@ auto HittableList<T>::hit(const Ray<T>& ray,
     double c;
   };
 
-  // TODO: move sem.
-  auto hit_closest = [&ray_t, &make_hit_visitor](auto acc, auto obj) {
+  auto hit_closest = [&ray_t, &make_hit_visitor](auto&& acc, const auto& obj) {
     const auto interval = Interval<T>(ray_t.min(), acc.c);
     const auto hr = std::visit(make_hit_visitor(interval), obj);
     return hr ? Acc{.hr = hr, .c = hr->t} : acc;
   };
 
   const auto init = Acc{.hr = std::nullopt, .c = ray_t.max()};
-  const auto res = std::ranges::fold_left(m_objects, init, hit_closest);
+  const auto res =
+      std::ranges::fold_left(m_objects, std::move(init), hit_closest);
   return res.hr;
 }
 

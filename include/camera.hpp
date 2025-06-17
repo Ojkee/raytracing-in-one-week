@@ -59,13 +59,14 @@ class Camera {
 
  private:
   template <class Ratio>
-  constexpr auto get_height(const Image_t& width, const Ratio& ratio)
-      -> const Image_t;
-
+  [[nodiscard]] constexpr auto get_height(const Image_t& width,
+                                          const Ratio& ratio) -> const Image_t;
   [[nodiscard]] auto ray_color(const Ray<T>& ray,
                                const int depth,
                                const HittableList<T>& world) const noexcept
       -> Color<T>;
+  [[nodiscard]] auto backgound_color(const Vec3<T>& direction) const noexcept
+      -> const Color<T>;
   [[nodiscard]] auto get_ray() const noexcept;
   [[nodiscard]] auto sample_square() const noexcept -> Vec3<T>;
   [[nodiscard]] auto defocus_disk_sample() const noexcept -> const Point3<T>;
@@ -101,12 +102,12 @@ template <class T, class Image_t>
 auto Camera<T, Image_t>::render(const HittableList<T>& world) const noexcept
     -> void {
   auto cout_color = write_color(std::cout);
-  auto lray_color = [this, &world](auto ray) {
+  auto lray_color = [this, &world](auto&& ray) {
     return ray_color(ray, m_max_depth, world);
   };
   auto generate_color = [samples = m_samples_per_pixel,
                          scale = m_pixel_samples_scale, make_ray = get_ray(),
-                         &lray_color](auto pair) {
+                         &lray_color](auto&& pair) {
     auto lmake_ray = [&make_ray, &pair](auto) { return make_ray(pair); };
     if (pair.first == 0 && pair.second % 5 == 0) {
       std::clog << "Row: " << pair.second << "\n";
@@ -147,20 +148,23 @@ auto Camera<T, Image_t>::ray_color(const Ray<T>& ray,
   if (depth <= 0)
     return Color<T>{0., 0., 0.};
 
-  // TODO: Clear this abomination {opts}
-  if (auto hr_opt = world.hit(ray, Interval{0.001, globals::infinity<T>});
-      hr_opt) {
-    const auto hit_record = hr_opt.value();
-    if (auto scatter_opt =
-            std::visit(material_scatter(ray, hit_record), hit_record.mat);
-        scatter_opt) {
-      const auto [s_ray, attenuation] = scatter_opt.value();
+  const auto inf_interval = Interval{0.001, globals::infinity<T>};
+  if (const auto hit_record = world.hit(ray, inf_interval)) {
+    if (const auto scattered = std::visit(
+            material_scatter(ray, hit_record.value()), hit_record->mat)) {
+      const auto [s_ray, attenuation] = scattered.value();
       return attenuation * ray_color(s_ray, depth - 1, world);
     }
     return Color<T>{0., 0., 0.};
   }
 
-  const auto unit_direction = unit_vector<T>(ray.direction());
+  return backgound_color(ray.direction());
+}
+
+template <class T, class Image_t>
+auto Camera<T, Image_t>::backgound_color(
+    const Vec3<T>& direction) const noexcept -> const Color<T> {
+  const auto unit_direction = unit_vector<T>(direction);
   const auto a = 0.5 * (unit_direction.y() + 1.);
   const auto c = (1. - a) * Color<T>{1., 1., 1.} + a * Color<T>{0.5, 0.7, 1.0};
   return c;
@@ -171,14 +175,14 @@ auto Camera<T, Image_t>::get_ray() const noexcept {
   return [this](auto pair) {
     const auto i = static_cast<T>(pair.first);
     const auto j = static_cast<T>(pair.second);
-    auto offset = sample_square();
-    auto pixel_sample = m_viewport.pixel00_loc() +
-                        ((i + offset.x()) * m_viewport.pixel_du()) +
-                        ((j + offset.y()) * m_viewport.pixel_dv());
-    auto ray_origin = (m_viewport.defocus_angle() <= 0)
-                          ? m_viewport.camera_center()
-                          : defocus_disk_sample();
-    auto ray_direction = pixel_sample - ray_origin;
+    const auto offset = sample_square();
+    const auto pixel_sample = m_viewport.pixel00_loc() +
+                              ((i + offset.x()) * m_viewport.pixel_du()) +
+                              ((j + offset.y()) * m_viewport.pixel_dv());
+    const auto ray_origin = (m_viewport.defocus_angle() <= 0)
+                                ? m_viewport.camera_center()
+                                : defocus_disk_sample();
+    const auto ray_direction = pixel_sample - ray_origin;
     return Ray<T>{ray_origin, ray_direction};
   };
 }

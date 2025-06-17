@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    add_compile_options(-Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3)
+    add_compile_options(-Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3 -g)
 endif()
 
 include_directories(include)
