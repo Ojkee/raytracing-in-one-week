@@ -30,8 +30,9 @@ class Sphere {
     auto root = (h - sqrtd) / a;
     if (!ray_t.surrounds(root)) {
       root = (h + sqrtd) / a;
-      if (!ray_t.surrounds(root))
+      if (!ray_t.surrounds(root)) {
         return std::nullopt;
+      }
     }
 
     const auto p = ray.at(root);

@@ -27,4 +27,15 @@ struct HitRecord {
   }
 };
 
+template <class T>
+auto operator<<(std::ostream& os, const HitRecord<T>& hr) -> std::ostream& {
+  os << "HitRecord {\n"
+     << "  t: " << hr.t << ",\n"
+     << "  p: " << hr.p << ",\n"
+     << "  normal: " << hr.normal << ",\n"
+     << "  front_face: " << std::boolalpha << hr.front_face << "\n"
+     << "}";
+  return os;
+}
+
 #endif  // !HIT_RECORD_HPP

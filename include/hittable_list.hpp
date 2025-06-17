@@ -1,6 +1,8 @@
 #ifndef HITTABLE_LIST_HPP
 #define HITTABLE_LIST_HPP
 
+#include <iostream>
+#include <optional>
 #include <variant>
 #include <vector>
 #include "hit_record.hpp"
@@ -19,8 +21,8 @@ class HittableList {
   auto add(const Hittable_t<T>& object) noexcept -> void;
   auto clear() noexcept -> void;
   [[nodiscard]] auto hit(const Ray<T>& ray,
-                         const Interval<T>& ray_t,
-                         HitRecord<T>& hit_record) const noexcept -> bool;
+                         const Interval<T>& ray_t) const noexcept
+      -> const std::optional<HitRecord<T>>;
 
  private:
   std::vector<Hittable_t<T>> m_objects{};
@@ -38,33 +40,31 @@ auto HittableList<T>::clear() noexcept -> void {
 
 template <class T>
 auto HittableList<T>::hit(const Ray<T>& ray,
-                          const Interval<T>& ray_t,
-                          HitRecord<T>& hit_record) const noexcept -> bool {
-  auto hit_anything = false;
-  auto closest = ray_t.max();
-
-  const auto hit_visitor = overloaded{
-      [&](const Sphere<T>& sphere) {
-        const auto closest_interval = Interval{ray_t.min(), closest};
-        return sphere.hit(ray, closest_interval);
-      },
+                          const Interval<T>& ray_t) const noexcept
+    -> const std::optional<HitRecord<T>> {
+  const auto make_hit_visitor = [&ray](auto closest) {
+    return overloaded{
+        [ray, closest](const Sphere<T>& sphere) {
+          return sphere.hit(ray, closest);
+        },
+    };
   };
 
-  for (const auto& object : m_objects) {
-    if (auto hr = std::visit(hit_visitor, object); hr) {
-      hit_anything = true;
-      closest = hr.value().t;
-      hit_record = hr.value();
-    }
-  }
+  struct Acc {
+    std::optional<HitRecord<T>> hr;
+    double c;
+  };
 
-  // TODO
-  // auto make_interval = [&ray_t](auto&& closest) {
-  //   return Interval{ray_t.min(), closest};
-  // };
-  // std::ranges::fold_left(m_objects, {}, []() {});
+  // TODO: move sem.
+  auto hit_closest = [&ray_t, &make_hit_visitor](auto acc, auto obj) {
+    const auto interval = Interval<T>(ray_t.min(), acc.c);
+    const auto hr = std::visit(make_hit_visitor(interval), obj);
+    return hr ? Acc{.hr = hr, .c = hr->t} : acc;
+  };
 
-  return hit_anything;
+  const auto init = Acc{.hr = std::nullopt, .c = ray_t.max()};
+  const auto res = std::ranges::fold_left(m_objects, init, hit_closest);
+  return res.hr;
 }
 
 #endif  // !HITTABLE_LIST_HPP

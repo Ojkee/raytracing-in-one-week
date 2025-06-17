@@ -147,9 +147,10 @@ auto Camera<T, Image_t>::ray_color(const Ray<T>& ray,
   if (depth <= 0)
     return Color<T>{0., 0., 0.};
 
-  HitRecord<T> hit_record{};
-
-  if (world.hit(ray, Interval{0.001, globals::infinity<T>}, hit_record)) {
+  // TODO: Clear this abomination {opts}
+  if (auto hr_opt = world.hit(ray, Interval{0.001, globals::infinity<T>});
+      hr_opt) {
+    const auto hit_record = hr_opt.value();
     if (auto scatter_opt =
             std::visit(material_scatter(ray, hit_record), hit_record.mat);
         scatter_opt) {
