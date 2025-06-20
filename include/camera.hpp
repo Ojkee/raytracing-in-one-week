@@ -59,8 +59,9 @@ class Camera {
 
  private:
   template <class Ratio>
-  [[nodiscard]] constexpr auto get_height(const Image_t& width,
-                                          const Ratio& ratio) -> const Image_t;
+  [[nodiscard]] static constexpr auto get_height(const Image_t& width,
+                                                 const Ratio& ratio)
+      -> const Image_t;
   [[nodiscard]] auto ray_color(const Ray<T>& ray,
                                const int depth,
                                const HittableList<T>& world) const noexcept
@@ -92,9 +93,7 @@ template <class Ratio>
 constexpr auto Camera<T, Image_t>::get_height(const Image_t& width,
                                               const Ratio& ratio)
     -> const Image_t {
-  auto h = static_cast<Ratio>(width) / ratio;
-  if (h < 1.0)
-    h = 1.0;
+  const auto h = std::max(1., static_cast<Ratio>(width) / ratio);
   return static_cast<Image_t>(h);
 }
 
